@@ -1,0 +1,8 @@
+camera:
+  width: 1536
+  height: 864
+
+paths:
+  captures_dir: captures
+  logs_dir: logs
+  models_dir: models
