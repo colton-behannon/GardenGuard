@@ -20,8 +20,7 @@ sudo apt install -y \
     python3-picamera2 \
     python3-opencv \
     python3-pigpio \
-    python3-yaml \
-    pigpio
+    python3-yaml
 echo "      Done."
 
 # --- 2. Enable camera ---
@@ -34,9 +33,18 @@ else
 fi
 
 # --- 3. Enable pigpiod service ---
-echo "[3/5] Enabling pigpiod service..."
-sudo systemctl enable --now pigpiod
-echo "      pigpiod enabled and started."
+echo "[3/5] Checking for pigpiod service..."
+# NOTE: The standalone pigpio package (which provides pigpiod) was removed from
+# Raspberry Pi OS Trixie. python3-pigpio provides only the Python bindings.
+# GPIO/servo support (Phase 4) will use lgpio instead — handled in a later phase.
+if systemctl list-unit-files pigpiod.service &>/dev/null 2>&1 && \
+   systemctl list-unit-files pigpiod.service | grep -q pigpiod; then
+    sudo systemctl enable --now pigpiod
+    echo "      pigpiod enabled and started."
+else
+    echo "      pigpiod service not found (expected on Trixie) — skipping."
+    echo "      GPIO support will be configured in Phase 4."
+fi
 
 # --- 4. Create Python venv ---
 echo "[4/5] Creating Python venv at ${VENV_DIR}..."

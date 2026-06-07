@@ -66,7 +66,7 @@ GardenGuard/
 
 ## Development Workflow
 
-Code is written on a laptop, deployed to the Pi via `rsync` over SSH.
+Code is written on a desktop, deployed to the Pi via `rsync` over SSH.
 
 ```bash
 # First time: provision the Pi

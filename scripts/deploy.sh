@@ -6,10 +6,12 @@
 #
 # Optional overrides:
 #   REMOTE_DIR   — destination directory on the Pi (default: ~/gardenguard)
+#   VENV_DIR     — venv directory on the Pi (default: ~/gardenguard-env)
 set -euo pipefail
 
 PI_HOST="${PI_HOST:?Set PI_HOST, e.g. PI_HOST=pi@192.168.1.42}"
 REMOTE_DIR="${REMOTE_DIR:-~/gardenguard}"
+VENV_DIR="${VENV_DIR:-~/gardenguard-env}"
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(dirname "${SCRIPT_DIR}")"
@@ -33,6 +35,9 @@ rsync -avz --delete \
 
 rsync -avz \
     "${PROJECT_ROOT}/pyproject.toml" "${PI_HOST}:${REMOTE_DIR}/pyproject.toml"
+
+# Install/update the project in editable mode so src-layout imports resolve.
+ssh "${PI_HOST}" "bash -lc 'source ${VENV_DIR}/bin/activate && pip install --quiet --editable ${REMOTE_DIR}'"
 
 echo ""
 echo "Deploy complete. To run on the Pi:"
