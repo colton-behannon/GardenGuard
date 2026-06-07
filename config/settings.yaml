@@ -2,6 +2,16 @@ camera:
   width: 1536
   height: 864
 
+motion:
+  min_area: 1500        # px^2 -- tune to filter wind/leaves
+  warmup_frames: 30     # frames to skip before reporting detections (MOG2 needs time to learn background)
+  learning_rate: 0.005  # lower = slower background adaptation
+  roi:                  # pixel polygon bounding your garden bed
+    - [100, 200]
+    - [1400, 200]
+    - [1400, 700]
+    - [100, 700]
+
 paths:
   captures_dir: captures
   logs_dir: logs
