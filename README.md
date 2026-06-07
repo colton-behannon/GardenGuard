@@ -58,6 +58,7 @@ GardenGuard/
 │   ├── pi_setup.sh             # One-shot Pi provisioning (run on Pi)
 │   └── deploy.sh               # rsync from laptop → Pi over SSH
 └── tests/
+    ├── conftest.py             # adds src/ to sys.path so pytest works without editable install
     ├── __init__.py
     └── test_capture.py         # Phase 1: camera smoke test (run on Pi)
 ```
@@ -69,15 +70,16 @@ GardenGuard/
 Code is written on a desktop, deployed to the Pi via `rsync` over SSH.
 
 ```bash
-# First time: provision the Pi
-ssh pi@<ip_address> 'bash -s' < scripts/pi_setup.sh
+# First time: provision the Pi (copy script, SSH in, run it)
+scp scripts/pi_setup.sh cbeh@<ip_address>:~/pi_setup.sh
+ssh cbeh@<ip_address> 'bash ~/pi_setup.sh'
 
-# Every deploy
-PI_HOST=pi@<ip_address> bash scripts/deploy.sh
+# Every deploy (rsync + editable install on Pi)
+PI_HOST=cbeh@<ip_address> bash scripts/deploy.sh
 
 # Run on Pi
-ssh pi@<ip_address>
-cd ~/gardenguard && source ~/gardenguard-env/bin/activate
+ssh cbeh@<ip_address>
+source ~/gardenguard-env/bin/activate && cd ~/gardenguard
 python -m gardenguard.main
 ```
 
@@ -106,16 +108,18 @@ python -m gardenguard.main
 
 ---
 
-### Phase 2 — Motion Detection
+### Phase 2 — Motion Detection ✅
 **Goal**: when anything moves in the garden bed ROI, save an annotated snapshot and log a JSON event.
 
-**New files**:
-- `src/gardenguard/detection/motion.py` — OpenCV `MOG2` background subtractor; configurable `min_area`; ROI polygon mask defined in `settings.yaml`
+- [x] `src/gardenguard/detection/motion.py` — OpenCV `MOG2` background subtractor; ROI polygon mask; morphological cleanup; `warmup_frames` to suppress cold-start false positives
+- [x] `config/settings.yaml` — `motion:` section with `min_area`, `learning_rate`, `warmup_frames`, ROI polygon
+- [x] `src/gardenguard/main.py` — capture loop → MOG2 → annotated JPEG saved to `captures/` → JSON event appended to `logs/detections.jsonl`
 
-**Config additions** (`settings.yaml`):
+**Config** (`settings.yaml`):
 ```yaml
 motion:
-  min_area: 1500        # px² — tune to filter wind/leaves
+  min_area: 1500        # px^2 -- tune to filter wind/leaves
+  warmup_frames: 30     # suppress detections while MOG2 learns the background
   learning_rate: 0.005  # lower = slower background adaptation
   roi:                  # pixel polygon bounding your garden bed
     - [100, 200]
@@ -124,7 +128,17 @@ motion:
     - [100, 700]
 ```
 
-**Updated `main.py`**: capture loop → run MOG2 → on trigger, draw bounding boxes, save annotated frame, append JSON line to `logs/detections.jsonl`.
+**Verification**:
+```bash
+# On Pi, inside venv
+python -m gardenguard.main
+# Wave hand in front of camera — after ~30 frames annotated JPEGs appear in captures/
+# Ctrl+C to stop
+ls captures/
+cat logs/detections.jsonl
+```
+
+> **Note**: Phase 2 saves a JPEG for every detected motion frame. Until the ML gating in Phase 3 is in place, avoid running this outdoors in wind for extended periods as it can fill the SD card quickly.
 
 ---
 
